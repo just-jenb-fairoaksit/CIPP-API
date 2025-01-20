@@ -14,12 +14,11 @@ Function Invoke-AddUser {
     Write-LogMessage -user $request.headers.'x-ms-client-principal' -API $APINAME -message 'Accessed this API' -Sev 'Debug'
 
     $UserObj = $Request.body
-    # Write to the Azure Functions log stream.
-    Write-Host 'PowerShell HTTP trigger function processed a request.'
+
     if ($UserObj.Scheduled.Enabled) {
         $TaskBody = [pscustomobject]@{
-            TenantFilter  = 'AllTenants'
-            Name          = "New user creation: $($UserObj.User)@$($UserObj.Domain)"
+            TenantFilter  = $UserObj.tenantfilter
+            Name          = "New user creation: $($UserObj.mailNickname)@$($UserObj.PrimDomain.value)"
             Command       = @{
                 value = 'New-CIPPUserTask'
                 label = 'New-CIPPUserTask'
