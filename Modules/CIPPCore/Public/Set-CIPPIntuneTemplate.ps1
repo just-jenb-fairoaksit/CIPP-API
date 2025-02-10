@@ -7,7 +7,7 @@ function Set-CIPPIntuneTemplate {
         $Description,
         $templateType
     )
-
+    Write-Host "Received $DisplayName, $Description, $RawJSON, $templateType"
     if (!$DisplayName) { throw 'You must enter a displayname' }
     if ($null -eq ($RawJSON | ConvertFrom-Json)) { throw 'the JSON is invalid' }
 
@@ -26,7 +26,7 @@ function Set-CIPPIntuneTemplate {
         GUID         = "$GUID"
         PartitionKey = 'IntuneTemplate'
     }
-    Write-LogMessage -user $request.headers.'x-ms-client-principal' -API $APINAME -message "Created intune policy template named $($Request.body.displayname) with GUID $GUID" -Sev 'Debug'
+    Write-LogMessage -Headers $Request.Headers -API $APINAME -message "Created intune policy template named $($Request.body.displayname) with GUID $GUID" -Sev 'Debug'
 
     return 'Successfully added template'
 }

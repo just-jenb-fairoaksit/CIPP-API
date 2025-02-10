@@ -15,7 +15,7 @@ function Invoke-CIPPStandardDisableSelfServiceLicenses {
         TAG
             "mediumimpact"
         ADDEDCOMPONENT
-            {"type":"input","name":"standards.DisableSelfServiceLicenses.Exclusions","label":"License Ids to exclude from this standard"}
+            {"type":"textField","name":"standards.DisableSelfServiceLicenses.Exclusions","label":"License Ids to exclude from this standard","required":false}
         IMPACT
             Medium Impact
         POWERSHELLEQUIVALENT
@@ -24,16 +24,18 @@ function Invoke-CIPPStandardDisableSelfServiceLicenses {
         UPDATECOMMENTBLOCK
             Run the Tools\Update-StandardsComments.ps1 script to update this comment block
     .LINK
-        https://docs.cipp.app/user-documentation/tenant/standards/edit-standards
+        https://docs.cipp.app/user-documentation/tenant/standards/list-standards/entra-aad-standards#medium-impact
     #>
 
     param($Tenant, $Settings)
     ##$Rerun -Type Standard -Tenant $Tenant -Settings $Settings 'DisableSelfServiceLicenses'
 
-    #Write-LogMessage -API 'Standards' -tenant $tenant -message 'Self Service Licenses cannot be disabled' -sev Error
+    # disable for now - MS enforced role requirement
+    Write-LogMessage -API 'Standards' -tenant $tenant -message 'Self Service Licenses cannot be disabled' -sev Error
+    return
+
     try {
         $selfServiceItems = (New-GraphGETRequest -scope 'aeb86249-8ea3-49e2-900b-54cc8e308f85/.default' -uri 'https://licensing.m365.microsoft.com/v1.0/policies/AllowSelfServicePurchase/products' -tenantid $Tenant).items
-        #$selfServiceItems = (Invoke-RestMethod -Method GET -Uri "https://licensing.m365.microsoft.com/v1.0/policies/AllowSelfServicePurchase/products" -Headers $header).items
     } catch {
         Write-LogMessage -API 'Standards' -tenant $tenant -message "Failed to retrieve self service products: $($_.Exception.Message)" -sev Error
         throw "Failed to retrieve self service products: $($_.Exception.Message)"
