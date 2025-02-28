@@ -7,37 +7,23 @@ Function Invoke-ExecExtensionsConfig {
     .ROLE
         CIPP.Extension.ReadWrite
     #>
-    [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSAvoidUsingConvertToSecureStringWithPlainText', '', Scope = 'Function')]
     [CmdletBinding()]
     param($Request, $TriggerMetadata)
 
-    $APIName = $TriggerMetadata.FunctionName
-    Write-LogMessage -user $Request.Headers.'x-ms-client-principal' -API $APINAME -message 'Accessed this API' -Sev 'Debug'
-
-    #Connect-AzAccount -UseDeviceAuthentication
-    # Write to the Azure Functions log stream.
-    Write-Information 'PowerShell HTTP trigger function processed a request.'
     $Body = [PSCustomObject]$Request.Body
     $results = try {
-        if ($Body.CIPPAPI.Enabled) {
-            try {
-                $APIConfig = New-CIPPAPIConfig -ExecutingUser $Request.Headers.'x-ms-client-principal' -resetpassword $Body.CIPPAPI.ResetPassword
-                $AddedText = $APIConfig.Results
-            } catch {
-                $AddedText = ' Could not enable CIPP-API. Check the CIPP documentation for API requirements.'
-                $Body = $Body | Select-Object * -ExcludeProperty CIPPAPI
-            }
-        }
-
         # Check if NinjaOne URL is set correctly and the instance has at least version 5.6
         if ($Body.NinjaOne) {
-            try {
-                [version]$Version = (Invoke-WebRequest -Method GET -Uri "https://$(($Body.NinjaOne.Instance -replace '/ws','') -replace 'https://','')/app-version.txt" -ea stop).content
-            } catch {
-                throw "Failed to connect to NinjaOne check your Instance is set correctly eg 'app.ninjarmmm.com'"
-            }
-            if ($Version -lt [version]'5.6.0.0') {
-                throw 'NinjaOne 5.6.0.0 is required.'
+            $AllowedNinjaHostnames = @(
+                'app.ninjarmm.com',
+                'eu.ninjarmm.com',
+                'oc.ninjarmm.com',
+                'ca.ninjarmm.com',
+                'us2.ninjarmm.com'
+            )
+            $SetNinjaHostname = $Body.NinjaOne.Instance -replace '/ws', '' -replace 'https://', ''
+            if ($AllowedNinjaHostnames -notcontains $SetNinjaHostname) {
+                "Error: NinjaOne URL is not allowed. Allowed hostnames are: $($AllowedNinjaHostnames -join ', ')"
             }
         }
 
@@ -50,17 +36,7 @@ Function Invoke-ExecExtensionsConfig {
                 Write-Information 'writing API Key to keyvault, and clearing.'
                 Write-Information "$ENV:WEBSITE_DEPLOYMENT_ID"
                 if ($Body.$APIKey.APIKey) {
-                    if ($env:AzureWebJobsStorage -eq 'UseDevelopmentStorage=true') {
-                        $DevSecretsTable = Get-CIPPTable -tablename 'DevSecrets'
-                        $Secret = [PSCustomObject]@{
-                            'PartitionKey' = $APIKey
-                            'RowKey'       = $APIKey
-                            'APIKey'       = $Body.$APIKey.APIKey
-                        }
-                        Add-CIPPAzDataTableEntity @DevSecretsTable -Entity $Secret -Force
-                    } else {
-                        $null = Set-AzKeyVaultSecret -VaultName $ENV:WEBSITE_DEPLOYMENT_ID -Name $APIKey -SecretValue (ConvertTo-SecureString -AsPlainText -Force -String $Body.$APIKey.APIKey)
-                    }
+                    Set-ExtensionAPIKey -Extension $APIKey -APIKey $Body.$APIKey.APIKey
                 }
                 if ($Body.$APIKey.PSObject.Properties.Name -notcontains 'APIKey') {
                     $Body.$APIKey | Add-Member -MemberType NoteProperty -Name APIKey -Value 'SentToKeyVault'
